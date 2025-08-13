@@ -1,0 +1,97 @@
+---
+title: "Validation"
+output: html_document
+date: "2025-08-12"
+---
+
+```{r message=FALSE, include=FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(dataRetrieval)
+library(viridis)
+library(MetBrewer)
+library(ggpmisc)
+```
+##Set working directory (folder everything gets saved into)
+```{r}
+#check working directory (what folder are you saving/pulling from?)
+getwd()
+
+#set working directory (decide which folder you want all your saved files to live in)
+setwd("C:/Users/morav042/Documents/LaramieBrat") #Replace with your folder of choice
+
+```
+
+##Import table
+```{r}
+#If you set your working directory, you don't need the entire file path, just the file name! If you did NOT set your wd, you need the entire file path. I recommend you always set a wd. 
+
+#Replace with your csv file name here:
+df <- read_csv("Crow_Capacity.csv")
+```
+
+
+##Categorize Predicted Dam Capacity
+```{r}
+df <- df %>% 
+  mutate(category = case_when(oCC_EX >= 15 ~ "Pervasive",
+                    oCC_EX >= 5 ~ "Frequent",
+                    oCC_EX >= 1 ~ "Occasional",
+                    oCC_EX > 0 ~ "Rare",
+                    oCC_EX == 0 ~ "None")
+  )
+```
+
+##Group into categories and calculate averages
+```{r}
+
+
+#Grouping
+grouped_df <- df %>%
+  group_by(category) %>%
+  summarize(mean_predicted = mean(oCC_EX),
+            mean_observed = mean(DamKM, na.rm = T))
+
+##re order categories by factor for plotting
+grouped_df$category <- factor(grouped_df$category, levels = c("Pervasive", "Frequent", "Occasional", "Rare", "None"))
+
+```
+
+##Plot Observed vs Predicted (averaged by category)
+```{r}
+ggplot(grouped_df, aes(mean_predicted, mean_observed, col = category))+
+  geom_point(size = 3)+
+  stat_poly_line(mapping = aes(group = 1), se= FALSE, method="lm", color = "black") +
+  stat_poly_eq(mapping = aes(group = 1)) +  #make sure statistics do not consider the color grouping, which is just for visualization
+  scale_color_manual(values = c("Pervasive" = "blue",
+                                "Frequent" = "green",
+                                "Occasional" = "yellow",
+                                "Rare" = "orange",
+                                "None" = "red"))+
+  labs(title = "Observed vs Predicted Dam Densities Averaged by Category",
+       x = "Predicted Maximum Capacity (dams/km)",
+       y = "Observed Dam Density (dams/km)") +
+  theme_classic()
+
+##Note: you will get a warning that "the following aesthetics were dropped during statistical transformation..." this is fine! I did that on purpose! 
+```
+
+##Observed vs Predicted dam densities
+###STILL WORKING ON THIS
+```{r}
+#change 0 to NA in observed
+df$DamKM_NA <- df$DamKM
+df$DamKM_NA[df$DamKM_NA == 0] <- NA
+
+
+ggplot(df, aes(oCC_EX, DamKM_NA))+
+  geom_point(size = 1)+
+  geom_abline()+
+  labs(title = "Observed vs Predicted Dam Densities Averaged by Category",
+       x = "Predicted Maximum Capacity (dams/km)",
+       y = "Observed Dam Density (dams/km)") +
+  theme_classic()
+```
+
