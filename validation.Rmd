@@ -13,6 +13,7 @@ library(dataRetrieval)
 library(viridis)
 library(MetBrewer)
 library(ggpmisc)
+library(quantreg)
 ```
 ##Set working directory (folder everything gets saved into)
 ```{r}
@@ -46,13 +47,11 @@ df <- df %>%
 
 ##Group into categories and calculate averages
 ```{r}
-
-
 #Grouping
 grouped_df <- df %>%
   group_by(category) %>%
   summarize(mean_predicted = mean(oCC_EX),
-            mean_observed = mean(DamKM, na.rm = T))
+            mean_observed = mean(DamKM))
 
 ##re order categories by factor for plotting
 grouped_df$category <- factor(grouped_df$category, levels = c("Pervasive", "Frequent", "Occasional", "Rare", "None"))
@@ -79,7 +78,7 @@ ggplot(grouped_df, aes(mean_predicted, mean_observed, col = category))+
 ```
 
 ##Observed vs Predicted dam densities
-###STILL WORKING ON THIS
+###CAN"T FIGURE OUT LEGEND
 ```{r}
 #change 0 to NA in observed
 df$DamKM_NA <- df$DamKM
@@ -87,11 +86,96 @@ df$DamKM_NA[df$DamKM_NA == 0] <- NA
 
 
 ggplot(df, aes(oCC_EX, DamKM_NA))+
-  geom_point(size = 1)+
-  geom_abline()+
+  geom_point(shape = 4, color = "blue", size = 2)+
+  scale_x_continuous(limits = c(0,30))+
+  geom_abline(color = "red", linewidth = 1)+ #1:1
+  stat_quantile(quantiles = 0.5, formula = y ~ x + 0, linetype = 2, color = "black", linewidth = 1)+ #dashed
+  stat_quantile(quantiles = 0.75, formula = y ~ x + 0, linetype = 3, color = "black", linewidth = 1)+ #dotted
+  stat_quantile(quantiles = 0.9, formula = y ~ x + 0, linetype = 4, color = "black", linewidth = 1)+ #dotdash
+  labs(title = "Observed vs Predicted Dam Densities",
+       x = "Predicted Maximum Capacity (dams/km)",
+       y = "Observed Dam Density (dams/km)", 
+      legend_position = "right") +
+  theme_classic()
+
+#SORRY CAN'T MAKE A LEGEND
+# 1:1 = red 
+# 90% quantile = dotdash
+# 75% quantile = dotted
+# 50% quantile = dashed
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#########################
+#IN PROGRESS#
+#########################
+
+
+
+#Test against Jordan's code
+##Import table
+```{r}
+#Replace with your csv file name here:
+df <- read_csv("BRAT4.csv")
+
+```
+
+##Categorize Predicted Dam Capacity
+```{r}
+df <- df %>% 
+  mutate(category = case_when(predicted_capacity >= 15 ~ "Pervasive",
+                    predicted_capacity >= 5 ~ "Frequent",
+                    predicted_capacity >= 1 ~ "Occasional",
+                    predicted_capacity > 0 ~ "Rare",
+                    predicted_capacity == 0 ~ "None")
+  )
+```
+
+##Group into categories and calculate averages
+```{r}
+#Grouping
+grouped_df <- df %>%
+  group_by(category) %>%
+  summarize(mean_predicted = mean(predicted_capacity),
+            mean_observed = mean(dam_density))
+
+##re order categories by factor for plotting
+grouped_df$category <- factor(grouped_df$category, levels = c("Pervasive", "Frequent", "Occasional", "Rare", "None"))
+
+```
+
+##Plot Observed vs Predicted (averaged by category)
+```{r}
+ggplot(grouped_df, aes(mean_predicted, mean_observed, col = category))+
+  geom_point(size = 3)+
+  stat_poly_line(mapping = aes(group = 1), se= FALSE, method="lm", color = "black") +
+  stat_poly_eq(mapping = aes(group = 1)) +  #make sure statistics do not consider the color grouping, which is just for visualization
+  scale_color_manual(values = c("Pervasive" = "blue",
+                                "Frequent" = "green",
+                                "Occasional" = "yellow",
+                                "Rare" = "orange",
+                                "None" = "red"))+
   labs(title = "Observed vs Predicted Dam Densities Averaged by Category",
        x = "Predicted Maximum Capacity (dams/km)",
        y = "Observed Dam Density (dams/km)") +
   theme_classic()
-```
 
+##Note: you will get a warning that "the following aesthetics were dropped during statistical transformation..." this is fine! I did that on purpose! 
+```
