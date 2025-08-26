@@ -15,6 +15,7 @@ library(MetBrewer)
 library(ggpmisc)
 library(quantreg)
 ```
+
 ##Set working directory (folder everything gets saved into)
 ```{r}
 #check working directory (what folder are you saving/pulling from?)
@@ -112,13 +113,125 @@ ggplot(df, aes(oCC_EX, DamKM_NA))+
 
 
 
+#Need a better statistical test for this
+```{r}
+ggplot(df, aes(oCC_EX, DamKM, col = category))+
+  geom_point(size =1)+
+  stat_poly_line(mapping = aes(group = 1), se= FALSE, method="lm", color = "black") +
+  stat_poly_eq(mapping = aes(group = 1)) +  #make sure statistics do not consider the color grouping, which is just for visualization
+  scale_color_manual(values = c("Pervasive" = "blue",
+                                "Frequent" = "green",
+                                "Occasional" = "yellow",
+                                "Rare" = "orange",
+                                "None" = "red"))+
+  labs(title = "Observed vs Predicted Dam Densities",
+       x = "Predicted Maximum Capacity (dams/km)",
+       y = "Observed Dam Density (dams/km)") +
+  theme_classic()
+
+##This implies to me that we need to remove zeros, lots of reaches with no beaver dams but not necessarily bc there CAN'T be beaver dams
+```
+
+```{r}
+#change 0 to NA in observed
+df$DamKM_NA <- df$DamKM
+df$DamKM_NA[df$DamKM_NA == 0] <- NA
+
+ggplot(df, aes(oCC_EX, DamKM_NA, col = category))+
+  geom_point(size =1)+
+  stat_poly_line(mapping = aes(group = 1), se= FALSE, method="lm", color = "black") +
+  stat_poly_eq(mapping = aes(group = 1)) +  #make sure statistics do not consider the color grouping, which is just for visualization
+  scale_color_manual(values = c("Pervasive" = "blue",
+                                "Frequent" = "green",
+                                "Occasional" = "yellow",
+                                "Rare" = "orange",
+                                "None" = "red"))+
+  labs(title = "Observed vs Predicted Dam Densities, no zeros",
+       x = "Predicted Maximum Capacity (dams/km)",
+       y = "Observed Dam Density (dams/km)") +
+  theme_classic()
+
+#now this looks weird
+```
+
+
+#plot residuals
+```{r}
+mod1 <- lm(data = df, DamKM ~ oCC_EX)
+df$residuals <- mod1$residuals
+
+
+ggplot(df, aes(x = oCC_EX, y = residuals)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    labs(title = "Residuals vs. Fitted Values",
+        x = "Fitted Values",
+        y = "Residuals") +
+    theme_minimal()
+
+
+# Create the normal Q-Q plot
+qqnorm(df$residuals, main = "Normal Q-Q Plot of Residuals")
+qqline(df$residuals, col = "red")
+
+#qqplot looks bad
+```
+
+
+```{r}
+# Remove outliers? 
+df_outliers <- subset(df, DamKM <= 50)
+
+mod2 <- lm(data = df_outliers, DamKM ~ oCC_EX)
+df_outliers$residuals <- mod2$residuals
+
+
+ggplot(df_outliers, aes(x = oCC_EX, y = residuals)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    labs(title = "Residuals vs. Fitted Values",
+        x = "Fitted Values",
+        y = "Residuals") +
+    theme_minimal()
+
+
+# Create the normal Q-Q plot
+qqnorm(df_outliers$residuals, main = "Normal Q-Q Plot of Residuals")
+qqline(df_outliers$residuals, col = "red")
+
+```
+```{r}
+#remove outliers and zeroes
+#change 0 to NA in observed
+df$DamKM_NA <- df$DamKM
+df$DamKM_NA[df$DamKM_NA == 0] <- NA
+
+df_outliers <- subset(df, DamKM_NA <= 50)
+
+mod2 <- lm(data = df_outliers, DamKM_NA ~ oCC_EX)
+df_outliers$residuals <- mod2$residuals
+
+
+ggplot(df_outliers, aes(x = oCC_EX, y = residuals)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    labs(title = "Residuals vs. Fitted Values",
+        x = "Fitted Values",
+        y = "Residuals") +
+    theme_minimal()
+
+
+# Create the normal Q-Q plot
+qqnorm(df_outliers$residuals, main = "Normal Q-Q Plot of Residuals")
+qqline(df_outliers$residuals, col = "red")
+
+#Okay so if we remove zeros and outliers >50 dams/km observed, then we get a more reasonable residual plot and a slightly more reasonable qq plot but qq is not ideal. 
+#is this just not a linear model
+```
 
 
 
-
-
-
-
+###THe data is not normally distributed because the underlying fuzzy logic creates "bins" even within the continuous output, meaning that predicted dam capacity is a pseudo continuous variable that actually has bins. This means the data isn't normally distributed even if you take away the NA values and the upper outliers. So a lm/regression without any prior binning isn't going to tell us anyting. The linear model/R2 value WITH 
 
 
 
