@@ -298,22 +298,3 @@ ggplot(grouped_df, aes(mean_predicted, mean_observed, col = category))+
 
 
 
-
-
-
-```{r}
-
-#Replace with your csv file name here:
-df <- read_csv("Keitreice_ChiSquare.csv")
-
-contingency_table <- table(df$US, df$UK)
-print(contingency_table)
-```
-
-```{r}
-chi_square_result <- chisq.test(contingency_table)
-print(chi_square_result)
-
-?chisq.test
-```
-
